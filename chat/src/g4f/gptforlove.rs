@@ -25,17 +25,14 @@ impl Generator for GptForLoveGenerator {
   fn enabled_for_multigen( &self ) -> bool {
     false
   }
-  async fn call( &self
-               , prompt: &str
-               , fmode: bool
-               , personality: &str )
+  async fn call(&self, prompt: &str, fmode: bool, personality: &str, system_context: &str)
     -> anyhow::Result<String> {
     let russian = lang::is_russian(prompt);
     match catch_unwind(|| {
       let c = Context::new();
       c.set("prompt", prompt);
+      c.set("system_context", system_context);
       c.set("is_russian", russian);
-      c.set("fmode", fmode);
       c.set("PERSONALITY", get_chimera_personality(personality));
       c.run(python! {
         import sys
@@ -43,15 +40,7 @@ impl Generator for GptForLoveGenerator {
         import g4f
   
         result = ""
-        if fmode:
-          systemContext = PERSONALITY
-        else:
-          systemContext = "You are a helpful assistant"
-        if is_russian:
-          systemContext += ", you reply in Russian, you don't provide Translation"
-        else:
-          systemContext += ", you reply in English"
-        messages = [{"role": "system", "content": systemContext}]
+        messages = [{"role": "system", "content": system_context}]
         try:
           messages.append({"role": "user", "content": prompt})
           rspns = g4f.ChatCompletion.create( model=g4f.models.gpt_4, messages=messages
@@ -90,7 +79,7 @@ mod gptforlove_tests {
   async fn gptforlove_test() {
     let gen = GptForLoveGenerator;
     let chat_response =
-      gen.call("what gpt version you use?", true, "Fingon").await;
+      gen.call("what gpt version you use?", true, "Fingon", "").await;
     assert!(chat_response.is_ok());
     assert!(!chat_response.unwrap().contains("is not working"));
   }
