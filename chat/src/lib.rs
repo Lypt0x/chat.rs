@@ -27,7 +27,7 @@ static GENERATORS: Lazy<Vec<Arc<dyn Generator + Send + Sync>>> =
         ]
   });
 
-pub async fn generate(msg: &str, bot_name: &str, fancy: bool) -> anyhow::Result<String> {
+pub async fn generate(msg: &str, bot_name: &str, fancy: bool, system_context: &str) -> anyhow::Result<String> {
   let fmode =
     if fancy {
       ! (msg.contains("please")
@@ -40,7 +40,7 @@ pub async fn generate(msg: &str, bot_name: &str, fancy: bool) -> anyhow::Result<
     };
 
   for gen in &*GENERATORS {
-    if let Ok(result) = gen.call(msg, fmode, bot_name).await {
+    if let Ok(result) = gen.call(msg, fmode, bot_name, system_context).await {
       if !result.contains("502: Bad gateway") {
         return Ok(result);
       }
@@ -50,7 +50,7 @@ pub async fn generate(msg: &str, bot_name: &str, fancy: bool) -> anyhow::Result<
   Err( anyhow::anyhow!("All generators failed") )
 }
 
-pub async fn generate_all<'a>(msg: &str, bot_name: &str, fancy: bool)
+pub async fn generate_all<'a>(msg: &str, bot_name: &str, fancy: bool, system_context: &str)
                                 -> Vec<(&'a str, anyhow::Result<String>)> {
   let fmode =
     if fancy {
@@ -66,7 +66,7 @@ pub async fn generate_all<'a>(msg: &str, bot_name: &str, fancy: bool)
   let genz = (&*GENERATORS).into_iter().map(
     |gen| async move { ( gen.name(),
       if gen.enabled_for_multigen()
-             { gen.call(msg, fmode, bot_name).await }
+             { gen.call(msg, fmode, bot_name, system_context).await }
         else { anyhow::Ok(String::from("disabled")) } )
     }
   );
@@ -74,6 +74,6 @@ pub async fn generate_all<'a>(msg: &str, bot_name: &str, fancy: bool)
   future::join_all(genz).await
 }
 
-pub async fn chat(msg: &str, bot_name: &str) -> anyhow::Result<String> {
-  generate(msg, bot_name, true).await
+pub async fn chat(msg: &str, bot_name: &str, system_context: &str) -> anyhow::Result<String> {
+  generate(msg, bot_name, true, system_context).await
 }
