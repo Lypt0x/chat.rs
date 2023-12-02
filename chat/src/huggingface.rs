@@ -20,7 +20,7 @@ impl Generator for HuggingFaceGenerator {
   async fn call( &self
                , prompt: &str
                , _fmode: bool
-               , _personality: &str )
+               , _personality: &str, system_context: &str )
     -> anyhow::Result<String> {
     match catch_unwind(|| {
       let c = Context::new();
